@@ -13,8 +13,8 @@ TagManager:
   - UI
   - 
   - 
-  - 
-  - 
+  - L_Ground
+  - L_Climb
   - 
   - 
   - 
@@ -41,12 +41,15 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
-  - name: Background
+  - name: S_Background
     uniqueID: 2999062407
     locked: 0
-  - name: Player
-    uniqueID: 1257453473
-    locked: 0
-  - name: Foreground
+  - name: S_Foreground
     uniqueID: 4188819877
+    locked: 0
+  - name: S_Climb
+    uniqueID: 1941453525
+    locked: 0
+  - name: S_Player
+    uniqueID: 1257453473
     locked: 0
