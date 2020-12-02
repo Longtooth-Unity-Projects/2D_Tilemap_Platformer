@@ -23,16 +23,19 @@ public class Player : MonoBehaviour
         climbIdle = 4
     }
     private PlayerState currentState = PlayerState.groundIdle;
+    private PlayerState lastState = PlayerState.groundIdle;
     private bool bIsAlive = true;
-    private bool bIsMovingHorizontal = false;
-    private bool bIsMovingVertical = false;
     private bool bIsOnGroundLayer = false;
     private bool bIsOnClimbLayer = false;
+    private bool bIsMovingHorizontal = false;
+    private bool bIsMovingVertical = false;
+
 
     // Cached References
     private Rigidbody2D playerRigidBody;
     private Collider2D playerCollider2D;
     private Animator playerAnimator;
+    private float startingGravity;
     private float horizontalControlThrow = 0;
     private float verticalControlThrow = 0;
     private Vector2 jumpVelocityToAdd;
@@ -46,6 +49,7 @@ public class Player : MonoBehaviour
         playerRigidBody = GetComponent<Rigidbody2D>();
         playerCollider2D = GetComponent<Collider2D>();
         playerAnimator = GetComponent<Animator>();
+        startingGravity = playerRigidBody.gravityScale;
         jumpVelocityToAdd = new Vector2(0f, jumpVelocity);
     }
 
@@ -53,94 +57,172 @@ public class Player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        ProcessMovement();
+
+        DetermineAnimation();
+    }// end of Update method
+
+
+    private void ProcessMovement()
+    {
         // values are between -1 and +1
         horizontalControlThrow = Input.GetAxis("Horizontal");
         verticalControlThrow = Input.GetAxis("Vertical");
 
-        // TODO refine this logic. if we set bool here, animaton will change while there is still movement
-        /*
-         * we should put checks in for running to allow changes only if touching ground
-         * also need to decide if we are going to allow moving off ladder
-         * 1. allow horizontal move on ladder
-         * 2. allow jump from ladder
-         * 3. allow grab ladder from jump
-         * 4. add climb idle
-         */
+        bIsOnGroundLayer = playerCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Ground"));
+        bIsOnClimbLayer = playerCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Climb"));
 
-        //playerRigidBody.velocity = new Vector2(horizontalControlThrow * runVelocity, verticalControlThrow * climbVelocity);
-
-        // we only want direction changes while player is on the ground or ladder, remove this check if movement mid-air is desired
-        if (playerCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Ground")) ||
-            playerCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Climb")))
+        // process movement
+        if (bIsOnClimbLayer)
         {
+            //we only want to stop gravity if player is already up ladder
+            if (!bIsOnGroundLayer)
+                playerRigidBody.gravityScale = 0;
+
+            if (verticalControlThrow != 0)
+                playerRigidBody.velocity = new Vector2(horizontalControlThrow * runVelocity, verticalControlThrow * climbVelocity);
+            else
+                //if we set it to 0, player sticks to ladder when jumps, if we use playerRigidBody.velocity.y, player drifts slowly
+                playerRigidBody.velocity = new Vector2(horizontalControlThrow * runVelocity, 0);
+        }
+        else if (bIsOnGroundLayer)
+        {
+            playerRigidBody.gravityScale = startingGravity;
             playerRigidBody.velocity = new Vector2(horizontalControlThrow * runVelocity, playerRigidBody.velocity.y);
         }
-
-
-
-
-
-        //horizontal movement check
-        bIsMovingHorizontal = Mathf.Abs(playerRigidBody.velocity.x) > Mathf.Epsilon;
-
-        //flip sprite to running direction
-        if (bIsMovingHorizontal) // TODO && not on ladder
-        {
-            transform.localScale = new Vector2(Mathf.Sign(playerRigidBody.velocity.x), 1f);
-        }
-
-
-
-
-
-
-
-        if (verticalControlThrow != 0)
-            Climb();
-
-        if (Input.GetButtonDown("Jump"))
-            Jump();
-
-        SetAnimation();
-    }
-
-    private void ProcessMovement()
-    {
-
-    }
-
-
-    private void Jump()
-    {
-        // use this check to disable ability to jump while already in the air
-        if (playerCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Ground")))
-            playerRigidBody.velocity += jumpVelocityToAdd;
-    }
-
-    private void Climb()
-    {
-        if (playerCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Climb")))
-        {
-            playerRigidBody.velocity = new Vector2(playerRigidBody.velocity.x, verticalControlThrow * climbVelocity);
-        }
-            playerAnimator.SetBool("bIsClimbing", true);
-    }
-
-    private void SetAnimation()
-    {
-        /*
-         * Animation Settings
-         * 1. ground idle: if on ground and no movment
-         * 2. ladder idle: if on ladder/climbing and not touching ground and no movement
-         * 2. running: if moving horizontal and not on ladder/climbing, this includes jumping
-         * 3. climbing motion: if moving and on ladder and not on ground
-         */
-
-
-        if (bIsMovingHorizontal)
-            playerAnimator.SetBool("bIsRunning", true);
         else
-            playerAnimator.SetBool("bIsRunning", false);
-    }
+        { //let gravity handle it
+            playerRigidBody.gravityScale = startingGravity;
+        }
+
+
+        if (Input.GetButtonDown("Jump") && bIsOnGroundLayer)
+        {
+            playerRigidBody.velocity += jumpVelocityToAdd;
+        }
+    }// end of method ProcessMovement
+
+    private void DetermineAnimation()
+    {
+        // velocity checks
+        bIsMovingHorizontal = Mathf.Abs(playerRigidBody.velocity.x) > Mathf.Epsilon;
+        bIsMovingVertical = Mathf.Abs(playerRigidBody.velocity.y) > Mathf.Epsilon;
+
+        // keep animation state assignemnt seperate from movement calculations for readability
+        if (bIsOnClimbLayer && !bIsOnGroundLayer)
+        {
+            if (!bIsMovingHorizontal && !bIsMovingVertical)
+                currentState = PlayerState.climbIdle;
+            else if (verticalControlThrow != 0)
+                currentState = PlayerState.climbing;
+            else
+                currentState = PlayerState.jumping;
+        }
+        else if (bIsOnGroundLayer)
+        {
+            if (bIsMovingHorizontal)
+            {
+                currentState = PlayerState.running;
+            }
+            else
+                currentState = PlayerState.groundIdle;
+        }
+        else if (!bIsOnClimbLayer && !bIsOnGroundLayer)
+        {
+            currentState = PlayerState.jumping;
+        }
+
+        //TODO see if this is more efficient than setting value each iteration
+        // only set animation state if there is a change
+        if (currentState != lastState)
+        {
+            playerAnimator.SetInteger("PlayerState", (int)currentState);
+            lastState = currentState;
+        }
+
+        //flip sprite to movement direction
+        if (bIsMovingHorizontal)
+            transform.localScale = new Vector2(Mathf.Sign(playerRigidBody.velocity.x), 1f);
+    }// end of method DetermineAnimation
 
 }// end of class Player
+
+
+
+
+
+
+//alternate movement method
+/*
+    bIsOnGroundLayer = playerCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Ground"));
+    bIsOnClimbLayer = playerCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Climb"));
+
+    // process movement
+
+    // values are between -1 and +1
+    horizontalControlThrow = Input.GetAxis("Horizontal");
+    playerRigidBody.velocity = new Vector2(horizontalControlThrow * runVelocity, playerRigidBody.velocity.y);
+
+    // we only want to process this if player is touching a climbable object
+    if (bIsOnClimbLayer)
+    {
+        verticalControlThrow = Input.GetAxis("Vertical");
+        playerRigidBody.velocity = new Vector2(playerRigidBody.velocity.x, verticalControlThrow * climbVelocity);
+        playerRigidBody.gravityScale = 0f;
+    }
+    else
+    {
+        playerRigidBody.gravityScale = startingGravity;
+    }
+
+    if (Input.GetButtonDown("Jump") && bIsOnGroundLayer)
+    {
+        playerRigidBody.velocity += jumpVelocityToAdd;
+    }
+
+
+    // velocity checks
+    bIsMovingHorizontal = Mathf.Abs(playerRigidBody.velocity.x) > Mathf.Epsilon;
+    bIsMovingVertical = Mathf.Abs(playerRigidBody.velocity.y) > Mathf.Epsilon;
+
+
+
+    // keep animation state assignemnt seperate from movement calculations for readability
+    if (bIsOnClimbLayer && !bIsOnGroundLayer)
+    {
+        if (!bIsMovingHorizontal && !bIsMovingVertical)
+            currentState = PlayerState.climbIdle;
+        else if (verticalControlThrow != 0)
+            currentState = PlayerState.climbing;
+        else
+            currentState = PlayerState.jumping;
+    }
+    else if (bIsOnGroundLayer)
+    {
+        if (bIsMovingHorizontal)
+        {
+            currentState = PlayerState.running;
+        }
+        else
+            currentState = PlayerState.groundIdle;
+    }
+    else if (!bIsOnClimbLayer && !bIsOnGroundLayer)
+    {
+        currentState = PlayerState.jumping;
+    }
+
+
+    //flip sprite to movement direction
+    if (bIsMovingHorizontal)
+        transform.localScale = new Vector2(Mathf.Sign(playerRigidBody.velocity.x), 1f);
+
+    //TODO can we remove this check now?
+    // only set animation state if there is a change
+    if (currentState != lastState)
+    {
+        playerAnimator.SetInteger("PlayerState", (int)currentState);
+        lastState = currentState;
+    }
+
+
+*/
