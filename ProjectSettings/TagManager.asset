@@ -15,9 +15,9 @@ TagManager:
   - 
   - L_Ground
   - L_Climb
-  - 
-  - 
-  - 
+  - L_Player
+  - L_Background
+  - L_Enemy
   - 
   - 
   - 
@@ -49,6 +49,9 @@ TagManager:
     locked: 0
   - name: S_Climb
     uniqueID: 1941453525
+    locked: 0
+  - name: S_Enemy
+    uniqueID: 2966872385
     locked: 0
   - name: S_Player
     uniqueID: 1257453473
