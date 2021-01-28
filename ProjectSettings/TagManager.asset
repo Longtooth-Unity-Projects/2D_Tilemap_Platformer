@@ -18,8 +18,8 @@ TagManager:
   - L_Player
   - L_Background
   - L_Enemy
-  - 
-  - 
+  - L_Hazard
+  - L_Interactables
   - 
   - 
   - 
@@ -44,6 +44,9 @@ TagManager:
   - name: S_Background
     uniqueID: 2999062407
     locked: 0
+  - name: S_Hazard
+    uniqueID: 3740574121
+    locked: 0
   - name: S_Foreground
     uniqueID: 4188819877
     locked: 0
@@ -52,6 +55,9 @@ TagManager:
     locked: 0
   - name: S_Enemy
     uniqueID: 2966872385
+    locked: 0
+  - name: S_Interactables
+    uniqueID: 2221785153
     locked: 0
   - name: S_Player
     uniqueID: 1257453473

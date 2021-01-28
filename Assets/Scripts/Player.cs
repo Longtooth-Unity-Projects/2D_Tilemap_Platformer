@@ -120,11 +120,14 @@ public class Player : MonoBehaviour
 
     private void DeathCheck()
     {
-        if (playerRigidBody.IsTouchingLayers(LayerMask.GetMask("L_Enemy")))
+        if (playerBodyCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Enemy", "L_Hazard")) ||
+            playerFeetCollider2D.IsTouchingLayers(LayerMask.GetMask("L_Enemy", "L_Hazard"))
+            )
         {
             bIsAlive = false;
             playerRigidBody.gravityScale = startingGravity;
             playerRigidBody.velocity = new Vector2(0f, deathFlyVelocity);
+            FindObjectOfType<GameManagerSingleton>().processPlayerDeath();
         }
     }
 
